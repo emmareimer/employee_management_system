@@ -1,12 +1,3 @@
-// - install mysql2. inquirer, console.table (render tables in our console) X
-// - Initial prompt questions: X
-//      view all departments, view all roles, view all employees X
-//      add a department, add a role, add an employee, and update an employee role X
-// - Choose to view all departments:
-//      Displays a formatted table showing department names and department ids
-// - Choose to view all roles
-//      Display the job title, role id, the department that role belongs to, and the salary for that role
-
 // - Instructions for readme
 //      1. Download repo
 //      2. Npm i
@@ -16,22 +7,23 @@
 //      6. Npm i console.table
 //      7. npm install dotenv 
 //      8. Log in to mysql in the terminal using mysql -u root -p
-//      9. Source TODO
+//      9. Use command `SOURCE db/schema.sql`
 //      10. Use command `USE employees_db;`
 
 require('dotenv').config();
 const connection = require('./config/connection');
 const inquirer = require("inquirer");
 const fs = require("fs");
+const { exit } = require('process');
+const cTable = require('console.table')
 
-// - Create mysql schema for 3 tables - Departments, Role, Employee (create file) X
-//      DONE
+// - Call initial function after connecting 
 connection.connect((error) => {
     if (error) throw error;
     showMenu();
   });
 
-// - Iniital function - showMenu() - inquirer for 3, 4 - call function at app start
+// - Iniital function - showMenu()
 const showMenu = () => {
     inquirer
       .prompt([
@@ -70,22 +62,13 @@ const showMenu = () => {
           } else if (menuChoice == "Update an Employee Role") {
             updateEmployee();
           } else if (menuChoice == "Exit") {
-            return;
+            exit();
           }
       });
   };
 
-// - Based on choice - call another function
-//      Create functions for each action viewDepartments, viewAllRoles, etc.
-//      At the bottom of each function, showMenu();
-//      clear console function??? 
-
-// - Select queries - 
-//      For all viewing functions
-//      SELECT * FROM [[table_name]]
-//      console.table
-
 // -------------------------------------------- VIEW FUNCTIONS ---------------------------------------
+
     function viewDepartments() {
           const sql = `SELECT department.id AS id, 
                         department.department_name AS department 
@@ -125,10 +108,6 @@ const showMenu = () => {
       connection.query(sql, (err, response) => {
       if (err) throw err;
 
-      // TODO: Remove (index)
-      // const array = response
-      // const transormed = array.reduce
-
       console.log(`All Employees:`);
       console.table(response);
       });
@@ -136,34 +115,128 @@ const showMenu = () => {
     };
 
 // -------------------------------------------- ADD FUNCTIONS ---------------------------------------
-// - addDepartment, addRole, addEmployee
-//      INSERT INTO [[table_name]] VALUES (list_of_values)
 
-   function addDepartment(){
-       console.log(4)
+const addDepartment = () => {
+  inquirer
+    .prompt([
+      {
+        type: "question",
+        name: "newDepartment",
+        message:
+          "What is the name of the new department?"
+      }
+    ])
 
-       showMenu();
-   };
+    .then((answer) => {
+      let sql = `INSERT INTO department (department_name) VALUES (?)`;
 
-    function addRole(){
-        console.log(5)
+      connection.query(sql, answer.newDepartment, (error, response) => {
+        if (error) throw error;
+        console.log(`Department created successfully.`);
+        viewDepartments();
+      });
+    });
+};
 
-        showMenu();
+    const addRole = () => {
+      inquirer
+        .prompt([
+          {
+            type: "question",
+            name: "newRole",
+            message:
+              "What is the name of the new role?"
+          },
+          {
+            type: "question",
+            name: "newSalary",
+            message: "What is the salary of this role?"
+          },
+          {
+            type: "question",
+            name: "departmentId",
+            message: "What is the department ID?"
+          }
+        ])
+    
+        .then((answer) => {
+          let sql = `INSERT INTO roles (title, salary, department_id) VALUES (?, ?, ?)`;
+
+          let updatedRole = [answer.newRole, answer.newSalary, answer.departmentId];
+
+          connection.query(sql, updatedRole, (error) => {
+            if (error) throw error;
+            console.log(`Role created successfully.`);
+            viewRoles();
+          });
+        });
     };
 
-   function addEmployee(){
-       console.log(6)
+   const addEmployee = () => {
+    inquirer
+      .prompt([
+        {
+          type: "question",
+          name: "firstName",
+          message:
+            "What is the first name of the employee?"
+        },
+        {
+          type: "question",
+          name: "lastName",
+          message: "What is the last name of the employee?"
+        },
+        {
+          type: "question",
+          name: "roleId",
+          message: "What is the employee's role ID?"
+        },
+        {
+          type: "question",
+          name: "managerId",
+          message: "What is the employee's manager ID?"
+        }
+      ])
+  
+      .then((answer) => {
+        let sql = `INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)`;
 
-       showMenu();
-   };
+        let updatedEmployee = [answer.firstName, answer.lastName, answer.roleId, answer.managerId];
+
+        connection.query(sql, updatedEmployee, (error) => {
+          if (error) throw error;
+          console.log(`Employee created successfully.`);
+          viewEmployees();
+        });
+      });
+  };
 
 // -------------------------------------------- UPDATE FUNCTIONS ---------------------------------------
-// - updateEmployeeRole
-//      UPDATE employees SET role_id = newRoleID WHERE id=employeeId;
 
-    function updateEmployee(){
-        console.log(7)
+const updateEmployee = () => {
 
-        showMenu();
-    };
+      inquirer
+      .prompt([
+        {
+          name: 'chosenEmployee',
+          type: 'input',
+          message: 'What is the ID of the employee?',
+        },
+        {
+          name: 'chosenRole',
+          type: 'input',
+          message: 'What is their new role ID?',
+        }
+      ])
+          .then((answer) => {
+            let sqls =`UPDATE employee SET employee.role_id = ? WHERE employee.id = ?`;
 
+            let updatedEmployee = [answer.chosenRole, answer.chosenEmployee];
+    
+            connection.query(sqls, updatedEmployee, (error) => {
+              if (error) throw error;
+              console.log(`Employee updated successfully.`);
+              viewEmployees();
+            });
+          });
+        };
